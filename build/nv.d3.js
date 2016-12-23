@@ -1,4 +1,4 @@
-/* nvd3 version 1.8.5-dev (https://github.com/novus/nvd3) 2016-12-19 */
+/* nvd3 version 1.8.5-dev (https://github.com/novus/nvd3) 2016-12-22 */
 (function(){
 
 // set up main nv object
@@ -9290,8 +9290,10 @@ nv.models.multiBarHorizontalChart = function() {
         , height = null
         , color = nv.utils.defaultColor()
         , showControls = true
+        , controlsPosition = 'top'        
         , controlLabels = {}
         , showLegend = true
+        , legendPosition = 'top'
         , showXAxis = true
         , showYAxis = true
         , stacked = false
@@ -9428,14 +9430,21 @@ nv.models.multiBarHorizontalChart = function() {
                 g.select('.nv-legendWrap')
                     .datum(data)
                     .call(legend);
+                if (legendPosition === 'bottom') {
+                     margin.bottom = xAxis.height() + legend.height();
+                     availableHeight = nv.utils.availableHeight(height, container, margin);
+                     g.select('.nv-legendWrap')
+                         .attr('transform', 'translate(' + controlWidth() + ',' + (availableHeight + xAxis.height())  +')');
+                } else if (legendPosition === 'top') {
 
-                if (!marginTop && legend.height() !== margin.top) {
-                    margin.top = legend.height();
-                    availableHeight = nv.utils.availableHeight(height, container, margin);
-                }
+                    if (!marginTop && legend.height() !== margin.top) {
+                        margin.top = legend.height();
+                        availableHeight = nv.utils.availableHeight(height, container, margin);
+                    }
 
-                g.select('.nv-legendWrap')
-                    .attr('transform', 'translate(' + controlWidth() + ',' + (-margin.top) +')');
+                    g.select('.nv-legendWrap')
+                        .attr('transform', 'translate(' + controlWidth() + ',' + (-margin.top) +')');
+                }                    
             }
 
             // Controls
@@ -9448,10 +9457,21 @@ nv.models.multiBarHorizontalChart = function() {
                 ];
 
                 controls.width(controlWidth()).color(['#444', '#444', '#444']);
-                g.select('.nv-controlsWrap')
-                    .datum(controlsData)
-                    .attr('transform', 'translate(0,' + (-margin.top) +')')
-                    .call(controls);
+
+                if (controlsPosition === 'bottom') {
+                     margin.bottom = xAxis.height() + legend.height();
+                     availableHeight = nv.utils.availableHeight(height, container, margin);
+                    g.select('.nv-controlsWrap')
+                        .datum(controlsData)
+                        .attr('transform', 'translate(0,' + (availableHeight + xAxis.height()) +')')
+                        .call(controls);  
+
+                } else if (controlsPosition === 'top') {
+                    g.select('.nv-controlsWrap')
+                        .datum(controlsData)
+                        .attr('transform', 'translate(0,' + (-margin.top) +')')
+                        .call(controls);                        
+                }
             }
 
             wrap.attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
@@ -9608,6 +9628,8 @@ nv.models.multiBarHorizontalChart = function() {
         width:      {get: function(){return width;}, set: function(_){width=_;}},
         height:     {get: function(){return height;}, set: function(_){height=_;}},
         showLegend: {get: function(){return showLegend;}, set: function(_){showLegend=_;}},
+        legendPosition: {get: function(){return legendPosition;}, set: function(_){legendPosition=_;}},
+        controlsPosition: {get: function(){return controlsPosition;}, set: function(_){controlsPosition=_;}},
         showControls: {get: function(){return showControls;}, set: function(_){showControls=_;}},
         controlLabels: {get: function(){return controlLabels;}, set: function(_){controlLabels=_;}},
         showXAxis:      {get: function(){return showXAxis;}, set: function(_){showXAxis=_;}},
