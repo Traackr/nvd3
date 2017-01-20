@@ -1,4 +1,4 @@
-/* nvd3 version 1.8.5-dev (https://github.com/novus/nvd3) 2016-12-08 */
+/* nvd3 version 1.8.5-dev (https://github.com/novus/nvd3) 2017-01-20 */
 (function(){
 
 // set up main nv object
@@ -6886,8 +6886,10 @@ nv.models.lineChart = function() {
                     .call(legend);
 
                 if (legendPosition === 'bottom') {
-                    wrap.select('.nv-legendWrap')
-                        .attr('transform', 'translate(0,' + availableHeight +')');
+                     margin.bottom = xAxis.height() + legend.height();
+                     availableHeight = nv.utils.availableHeight(height, container, margin);
+                     g.select('.nv-legendWrap')
+                         .attr('transform', 'translate(0,' + (availableHeight + xAxis.height())  +')');
                 } else if (legendPosition === 'top') {
                     if (!marginTop && legend.height() !== margin.top) {
                         margin.top = legend.height();
@@ -9288,8 +9290,10 @@ nv.models.multiBarHorizontalChart = function() {
         , height = null
         , color = nv.utils.defaultColor()
         , showControls = true
+        , controlsPosition = 'top'        
         , controlLabels = {}
         , showLegend = true
+        , legendPosition = 'top'
         , showXAxis = true
         , showYAxis = true
         , stacked = false
@@ -9426,14 +9430,21 @@ nv.models.multiBarHorizontalChart = function() {
                 g.select('.nv-legendWrap')
                     .datum(data)
                     .call(legend);
+                if (legendPosition === 'bottom') {
+                     margin.bottom = xAxis.height() + legend.height();
+                     availableHeight = nv.utils.availableHeight(height, container, margin);
+                     g.select('.nv-legendWrap')
+                         .attr('transform', 'translate(' + controlWidth() + ',' + (availableHeight + xAxis.height())  +')');
+                } else if (legendPosition === 'top') {
 
-                if (!marginTop && legend.height() !== margin.top) {
-                    margin.top = legend.height();
-                    availableHeight = nv.utils.availableHeight(height, container, margin);
-                }
+                    if (!marginTop && legend.height() !== margin.top) {
+                        margin.top = legend.height();
+                        availableHeight = nv.utils.availableHeight(height, container, margin);
+                    }
 
-                g.select('.nv-legendWrap')
-                    .attr('transform', 'translate(' + controlWidth() + ',' + (-margin.top) +')');
+                    g.select('.nv-legendWrap')
+                        .attr('transform', 'translate(' + controlWidth() + ',' + (-margin.top) +')');
+                }                    
             }
 
             // Controls
@@ -9446,10 +9457,21 @@ nv.models.multiBarHorizontalChart = function() {
                 ];
 
                 controls.width(controlWidth()).color(['#444', '#444', '#444']);
-                g.select('.nv-controlsWrap')
-                    .datum(controlsData)
-                    .attr('transform', 'translate(0,' + (-margin.top) +')')
-                    .call(controls);
+
+                if (controlsPosition === 'bottom') {
+                     margin.bottom = xAxis.height() + legend.height();
+                     availableHeight = nv.utils.availableHeight(height, container, margin);
+                    g.select('.nv-controlsWrap')
+                        .datum(controlsData)
+                        .attr('transform', 'translate(0,' + (availableHeight + xAxis.height()) +')')
+                        .call(controls);  
+
+                } else if (controlsPosition === 'top') {
+                    g.select('.nv-controlsWrap')
+                        .datum(controlsData)
+                        .attr('transform', 'translate(0,' + (-margin.top) +')')
+                        .call(controls);                        
+                }
             }
 
             wrap.attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
@@ -9606,6 +9628,8 @@ nv.models.multiBarHorizontalChart = function() {
         width:      {get: function(){return width;}, set: function(_){width=_;}},
         height:     {get: function(){return height;}, set: function(_){height=_;}},
         showLegend: {get: function(){return showLegend;}, set: function(_){showLegend=_;}},
+        legendPosition: {get: function(){return legendPosition;}, set: function(_){legendPosition=_;}},
+        controlsPosition: {get: function(){return controlsPosition;}, set: function(_){controlsPosition=_;}},
         showControls: {get: function(){return showControls;}, set: function(_){showControls=_;}},
         controlLabels: {get: function(){return controlLabels;}, set: function(_){controlLabels=_;}},
         showXAxis:      {get: function(){return showXAxis;}, set: function(_){showXAxis=_;}},
@@ -12743,20 +12767,23 @@ nv.models.scatter = function() {
 
                 // inject series and point index for reference into voronoi
                 if (useVoronoi === true) {
+                    
+                    // nuke all voronoi paths on reload and recreate them
+                    wrap.select('.nv-point-paths').selectAll('path').remove();
+                    
                     var vertices = d3.merge(data.map(function(group, groupIndex) {
                             return group.values
                                 .map(function(point, pointIndex) {
                                     // *Adding noise to make duplicates very unlikely
                                     // *Injecting series and point index for reference
-                                    /* *Adding a 'jitter' to the points, because there's an issue in d3.geom.voronoi.
-                                     */
+                                    // *Adding a 'jitter' to the points, because there's an issue in d3.geom.voronoi.
                                     var pX = getX(point,pointIndex);
                                     var pY = getY(point,pointIndex);
 
-                                    return [nv.utils.NaNtoZero(x(pX))+ Math.random() * 1e-4,
-                                            nv.utils.NaNtoZero(y(pY))+ Math.random() * 1e-4,
+                                    return [nv.utils.NaNtoZero(x(pX)) + Math.random() * 1e-4,
+                                            nv.utils.NaNtoZero(y(pY)) + Math.random() * 1e-4,
                                         groupIndex,
-                                        pointIndex, point]; //temp hack to add noise until I think of a better way so there are no duplicates
+                                        pointIndex, point];
                                 })
                                 .filter(function(pointArray, pointIndex) {
                                     return pointActive(pointArray[4], pointIndex); // Issue #237.. move filter to after map, so pointIndex is correct!
@@ -12782,6 +12809,18 @@ nv.models.scatter = function() {
                         [width + 10,-10]
                     ]);
 
+                    // delete duplicates from vertices - essential assumption for d3.geom.voronoi
+                    var epsilon = 1e-4; // Uses 1e-4 to determine equivalence.
+                    vertices = vertices.sort(function(a,b){return ((a[0] - b[0]) || (a[1] - b[1]))});
+                    for (var i = 0; i < vertices.length - 1; ) {
+                        if ((Math.abs(vertices[i][0] - vertices[i+1][0]) < epsilon) &&
+                        (Math.abs(vertices[i][1] - vertices[i+1][1]) < epsilon)) {
+                            vertices.splice(i+1, 1);
+                        } else {
+                            i++;
+                        }
+                    }
+
                     var voronoi = d3.geom.voronoi(vertices).map(function(d, i) {
                         return {
                             'data': bounds.clip(d),
@@ -12790,8 +12829,6 @@ nv.models.scatter = function() {
                         }
                     });
 
-                    // nuke all voronoi paths on reload and recreate them
-                    wrap.select('.nv-point-paths').selectAll('path').remove();
                     var pointPaths = wrap.select('.nv-point-paths').selectAll('path').data(voronoi);
                     var vPointPaths = pointPaths
                         .enter().append("svg:path")
